@@ -43,5 +43,5 @@ ENV NODE_ENV=production
 ENV HOSTNAME="0.0.0.0"
 ENV PORT=10000
 
-# Start the app with explicit port binding
-CMD ["sh", "-c", "next start -H 0.0.0.0 -p $PORT"]
+# Start the app - use node directly to run next from node_modules
+CMD ["sh", "-c", "node node_modules/next/dist/bin/next start -H 0.0.0.0 -p $PORT"]

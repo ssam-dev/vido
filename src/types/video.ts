@@ -60,11 +60,17 @@ export interface VideoFormat {
  * Copilot: Extract this from yt-dlp --dump-json output
  */
 export interface VideoInfo {
+  id?: string;
   title: string;
+  description?: string;
   thumbnail: string;
   duration: number;
   uploader: string;
-  platform: 'youtube' | 'instagram' | 'facebook' | 'twitter' | 'tiktok' | 'vimeo' | 'other' | 'unknown';
+  viewCount?: number;
+  likeCount?: number;
+  uploadDate?: string;
+  platform: string;
+  originalUrl?: string;
   mediaType: 'video' | 'photo';
 }
 
@@ -131,20 +137,29 @@ export interface YtDlpFormat {
 }
 
 /**
- * YtDlpVideoInfo - Parsed video info from yt-dlp --dump-json
+ * YtDlpVideoInfo - Parsed video info from yt-dlp --dump-json or Cobalt API
  * 
- * Copilot: Parse yt-dlp JSON output into this structure before
+ * Copilot: Parse API output into this structure before
  * converting to our VideoInfo type
  */
 export interface YtDlpVideoInfo {
+  id?: string;
   title: string;
+  description?: string;
   thumbnail?: string;
   thumbnails?: Array<{ url: string; width?: number; height?: number }>;
   duration?: number;
   uploader?: string;
+  uploader_id?: string;
   channel?: string;
+  view_count?: number;
+  like_count?: number;
+  upload_date?: string;
+  extractor?: string;
   extractor_key?: string;
   webpage_url?: string;
+  ext?: string;
   formats?: YtDlpFormat[];
   url?: string;
+  _type?: 'video' | 'photo';
 }

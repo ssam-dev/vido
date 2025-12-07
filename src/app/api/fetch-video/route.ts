@@ -227,12 +227,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<VideoFetc
     // Copilot: Get direct download URL for the selected format
     let downloadUrl: string;
     try {
-      // First try to use the URL from the format if available
-      if (selectedFormat.url) {
-        downloadUrl = selectedFormat.url;
-      } else {
-        // Otherwise, use yt-dlp to get the download URL
-        downloadUrl = await getDownloadUrl(url, selectedFormat.format_id);
+      // Use the URL from the format
+      downloadUrl = getDownloadUrl(selectedFormat);
+      
+      if (!downloadUrl) {
+        throw new Error('No download URL available');
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to get download URL';

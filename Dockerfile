@@ -35,12 +35,13 @@ RUN npm run build
 # Remove devDependencies after build to reduce image size
 RUN npm prune --production
 
-# Expose port (Render uses PORT env variable)
-EXPOSE 3000
+# Expose port (Render uses PORT env variable, typically 10000)
+EXPOSE 10000
 
 # Set environment variables
 ENV NODE_ENV=production
 ENV HOSTNAME="0.0.0.0"
+ENV PORT=10000
 
-# Start the app - Next.js will use PORT env variable from Render
-CMD ["npm", "start"]
+# Start the app with explicit port binding
+CMD ["sh", "-c", "next start -H 0.0.0.0 -p $PORT"]

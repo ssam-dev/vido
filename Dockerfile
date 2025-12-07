@@ -47,15 +47,14 @@ RUN npm prune --production
 # 🚀 Runtime Configuration
 # ============================================
 
-# Standard practice is to expose the application's expected port.
-# Railway/Render/etc. will use an ENV variable, but this is documentation.
+# Expose the application's standard port for documentation.
 EXPOSE 3000
 
-# Set environment variables for Next.js
-# PORT is set dynamically by Railway/Render, default to 3000
+# Set environment variables for Next.js runtime.
 ENV NODE_ENV=production
 ENV HOSTNAME="0.0.0.0"
 
 # Start the app
-# Use shell form to expand PORT variable with fallback default
+# MUST use shell form (sh -c) to expand the PORT variable
+# Exec form like CMD ["node", ..., "${PORT:-3000}"] will NOT expand variables!
 CMD ["sh", "-c", "node node_modules/next/dist/bin/next start -H 0.0.0.0 -p ${PORT:-3000}"]

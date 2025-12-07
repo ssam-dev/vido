@@ -47,19 +47,22 @@ RUN npm prune --production
 # 🚀 Runtime Configuration
 # ============================================
 
-# EXPOSE: Documents the port the application runs on inside the container (default for Next.js).
-# Note: This instruction does not actually publish the port; 'docker run -p' or a deployment service handles mapping the port.
+# EXPOSE: Documents the primary network port (3000) that the Next.js application is configured to listen on 
+# inside the isolated container environment. 
+# IMPORTANT: This instruction is for documentation only and does not automatically map the port to the host system.
+# Port mapping must be handled externally (e.g., via 'docker run -p' or the cloud deployment platform's settings).
 EXPOSE 3000
 
-# ENV: Set required environment variables for the Next.js production runtime.
-# NODE_ENV=production: Enables production optimizations (e.g., smaller bundle size, caching).
-# HOSTNAME="0.0.0.0": Instructs the Node.js server to listen on all available network interfaces, 
-# which is essential for containerized environments.
+# ENV: Sets critical environment variables necessary for the application's runtime.
+# NODE_ENV=production: Triggers performance optimizations, minimizes output, and enables production caching 
+# within the Next.js framework.
+# HOSTNAME="0.0.0.0": Instructs the Node.js server to bind to all available network interfaces within the 
+# container. This is crucial for accessibility, as containers don't use 'localhost' (127.0.0.1) reliably.
 ENV NODE_ENV=production
 ENV HOSTNAME="0.0.0.0"
 
-# CMD: Defines the command to run when the container starts.
-# We use the 'sh -c' (shell form) to enable shell-level variable substitution.
-# This ensures dynamic port assignment (${PORT:-3000}) works: 
-# It uses the host's assigned $PORT variable (e.g., from Railway/Render) or defaults to 3000.
+# CMD: Specifies the command that executes when the container starts.
+# We use the shell form (CMD ["sh", "-c", "..."]) to guarantee shell-level variable substitution.
+# This enables dynamic port assignment: the server uses the $PORT environment variable provided by the 
+# hosting platform (e.g., Railway, Render) and falls back to port 3000 if $PORT is undefined (${PORT:-3000}).
 CMD ["sh", "-c", "node node_modules/next/dist/bin/next start -H 0.0.0.0 -p ${PORT:-3000}"]

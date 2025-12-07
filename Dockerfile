@@ -47,17 +47,19 @@ RUN npm prune --production
 # 🚀 Runtime Configuration
 # ============================================
 
-# Expose the application's standard port for documentation.
-# This does not publish the port, but indicates the port the container is listening on.
+# EXPOSE: Documents the port the application runs on inside the container (default for Next.js).
+# Note: This instruction does not actually publish the port; 'docker run -p' or a deployment service handles mapping the port.
 EXPOSE 3000
 
-# Set environment variables required by Next.js and the container environment.
-# NODE_ENV=production optimizes the Next.js runtime.
-# HOSTNAME="0.0.0.0" ensures the Next.js server binds to all available network interfaces.
+# ENV: Set required environment variables for the Next.js production runtime.
+# NODE_ENV=production: Enables production optimizations (e.g., smaller bundle size, caching).
+# HOSTNAME="0.0.0.0": Instructs the Node.js server to listen on all available network interfaces, 
+# which is essential for containerized environments.
 ENV NODE_ENV=production
 ENV HOSTNAME="0.0.0.0"
 
-# Start the Next.js application in production mode.
-# The 'sh -c' (shell form) is crucial for dynamic cloud deployments (e.g., Railway, Render).
-# It allows for variable substitution: ${PORT} is used if set by the host, otherwise it defaults to 3000.
+# CMD: Defines the command to run when the container starts.
+# We use the 'sh -c' (shell form) to enable shell-level variable substitution.
+# This ensures dynamic port assignment (${PORT:-3000}) works: 
+# It uses the host's assigned $PORT variable (e.g., from Railway/Render) or defaults to 3000.
 CMD ["sh", "-c", "node node_modules/next/dist/bin/next start -H 0.0.0.0 -p ${PORT:-3000}"]

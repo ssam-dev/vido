@@ -35,13 +35,13 @@ RUN npm run build
 # Remove devDependencies after build to reduce image size
 RUN npm prune --production
 
-# Expose port (Render uses PORT env variable, typically 10000)
-EXPOSE 10000
-
 # Set environment variables
 ENV NODE_ENV=production
 ENV HOSTNAME="0.0.0.0"
-ENV PORT=10000
 
-# Start the app - use node directly to run next from node_modules
-CMD ["sh", "-c", "node node_modules/next/dist/bin/next start -H 0.0.0.0 -p $PORT"]
+# Railway sets PORT dynamically, default to 3000
+ENV PORT=3000
+EXPOSE 3000
+
+# Start the app - Railway will set PORT env variable
+CMD ["sh", "-c", "node node_modules/next/dist/bin/next start -H 0.0.0.0 -p ${PORT:-3000}"]

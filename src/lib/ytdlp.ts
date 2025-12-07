@@ -227,11 +227,13 @@ export async function fetchVideoInfo(url: string): Promise<YtDlpVideoInfo> {
     // --dump-json: Output video info as JSON without downloading
     // --no-warnings: Suppress warning messages
     // --no-playlist: Only process single video, not playlists
-    const command = `${ytdlp} --dump-json --no-warnings --no-playlist "${url}"`;
+    // --socket-timeout: Increase socket timeout for slow sites
+    // --retries: Retry on connection failures
+    const command = `${ytdlp} --dump-json --no-warnings --no-playlist --socket-timeout 60 --retries 3 "${url}"`;
     
     const { stdout, stderr } = await execAsync(command, {
-      // Copilot: Set timeout to prevent hanging on slow responses
-      timeout: 60000, // 60 second timeout
+      // Copilot: Set timeout to prevent hanging on slow responses (2 minutes for slow sites)
+      timeout: 120000, // 120 second timeout
       maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large JSON responses
     });
 
@@ -250,6 +252,12 @@ export async function fetchVideoInfo(url: string): Promise<YtDlpVideoInfo> {
       }
       if (error.message.includes('Video unavailable')) {
         throw new Error('Video is unavailable or private');
+      }
+      if (error.message.includes('timed out') || error.message.includes('timeout')) {
+        throw new Error('Connection timed out. The site may be blocked, slow, or unavailable. Try using a VPN.');
+      }
+      if (error.message.includes('Unable to download webpage')) {
+        throw new Error('Could not connect to the website. Check your internet connection or try using a VPN.');
       }
       throw new Error(`Failed to fetch video info: ${error.message}`);
     }

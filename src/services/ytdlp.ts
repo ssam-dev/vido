@@ -1,7 +1,7 @@
 /**
  * Video Download Service (Vercel-compatible)
  * 
- * Uses Cobalt API for video downloading - works on serverless platforms.
+ * Uses multiple free APIs for video downloading - works on serverless platforms.
  * Supports YouTube, Instagram, TikTok, Twitter, Facebook, and more.
  */
 
@@ -11,9 +11,6 @@ import type {
   YtDlpVideoInfo,
   YtDlpFormat,
 } from '@/types/video';
-
-// Cobalt API endpoint (public instance)
-const COBALT_API = 'https://api.cobalt.tools';
 
 // ============================================================================
 // URL VALIDATION
@@ -61,130 +58,193 @@ export function validateVideoUrl(url: string): { isValid: boolean; platform: str
     }
   }
 
-  // Allow any URL - Cobalt will handle unsupported ones
+  // Allow any URL
   return { isValid: true, platform: 'Other' };
 }
 
 // ============================================================================
-// COBALT API INTEGRATION
+// VIDEO FETCH APIs
 // ============================================================================
 
-interface CobaltResponse {
-  status: 'error' | 'redirect' | 'stream' | 'success' | 'rate-limit' | 'picker';
-  text?: string;
-  url?: string;
-  pickerType?: 'various' | 'images';
-  picker?: Array<{
-    type: 'video' | 'photo';
-    url: string;
-    thumb?: string;
-  }>;
-  audio?: string;
+/**
+ * Try multiple free APIs to fetch video info
+ */
+export async function fetchVideoInfo(url: string): Promise<YtDlpVideoInfo> {
+  const validation = validateVideoUrl(url);
+  const platform = validation.platform;
+  
+  // Try different APIs based on platform
+  const errors: string[] = [];
+  
+  // Try AllTube API (supports many platforms)
+  try {
+    const result = await fetchFromAllTube(url, platform);
+    if (result) return result;
+  } catch (e) {
+    errors.push(`AllTube: ${e instanceof Error ? e.message : 'failed'}`);
+  }
+
+  // Try SaveFrom-style API
+  try {
+    const result = await fetchFromSaveFrom(url, platform);
+    if (result) return result;
+  } catch (e) {
+    errors.push(`SaveFrom: ${e instanceof Error ? e.message : 'failed'}`);
+  }
+
+  // If all APIs fail, throw error
+  throw new Error(
+    `Could not fetch video. This may be due to:\n` +
+    `• The video is private or age-restricted\n` +
+    `• The platform is blocking requests\n` +
+    `• The URL is invalid\n\n` +
+    `Please try a different video or check if the video is publicly accessible.`
+  );
 }
 
 /**
- * Fetch video info using Cobalt API
+ * Fetch using AllTube-style API
  */
-export async function fetchVideoInfo(url: string): Promise<YtDlpVideoInfo> {
-  try {
-    const response = await fetch(`${COBALT_API}/`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        url: url,
-        downloadMode: 'auto',
-        filenameStyle: 'pretty',
-        videoQuality: '1080',
-      }),
-    });
+async function fetchFromAllTube(url: string, platform: string): Promise<YtDlpVideoInfo | null> {
+  // Use a public extractors API
+  const apiUrl = `https://api.vevioz.com/api/button/mp4?url=${encodeURIComponent(url)}`;
+  
+  const response = await fetch(apiUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    },
+  });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Cobalt API error: ${response.status} - ${errorText}`);
-    }
-
-    const data: CobaltResponse = await response.json();
-
-    if (data.status === 'error') {
-      throw new Error(data.text || 'Failed to process video');
-    }
-
-    if (data.status === 'rate-limit') {
-      throw new Error('Rate limited. Please try again in a few seconds.');
-    }
-
-    // Handle different response types
-    let downloadUrl = '';
-    let thumbnail = '';
-    let isPhoto = false;
-
-    if (data.status === 'redirect' || data.status === 'stream') {
-      downloadUrl = data.url || '';
-    } else if (data.status === 'picker' && data.picker && data.picker.length > 0) {
-      // Multiple items (e.g., Instagram carousel)
-      const firstItem = data.picker[0];
-      downloadUrl = firstItem.url;
-      thumbnail = firstItem.thumb || '';
-      isPhoto = firstItem.type === 'photo';
-    }
-
-    if (!downloadUrl) {
-      throw new Error('No download URL available');
-    }
-
-    // Detect platform for title
-    const validation = validateVideoUrl(url);
-    const platform = validation.platform;
-
-    // Build response in YtDlpVideoInfo format for compatibility
-    const videoInfo: YtDlpVideoInfo = {
-      id: Buffer.from(url).toString('base64').substring(0, 11),
-      title: `${platform} Video`,
-      description: '',
-      thumbnail: thumbnail || '',
-      duration: 0,
-      uploader: platform,
-      uploader_id: '',
-      view_count: 0,
-      like_count: 0,
-      upload_date: new Date().toISOString().split('T')[0].replace(/-/g, ''),
-      webpage_url: url,
-      extractor: platform.toLowerCase(),
-      ext: isPhoto ? 'jpg' : 'mp4',
-      url: downloadUrl,
-      formats: [
-        {
-          format_id: 'best',
-          ext: isPhoto ? 'jpg' : 'mp4',
-          url: downloadUrl,
-          width: isPhoto ? 1080 : 1920,
-          height: isPhoto ? 1080 : 1080,
-          filesize: undefined,
-          format_note: isPhoto ? 'Original' : 'HD',
-          vcodec: isPhoto ? 'none' : 'h264',
-          acodec: isPhoto ? 'none' : 'aac',
-        },
-      ],
-      _type: isPhoto ? 'photo' : 'video',
-    };
-
-    return videoInfo;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    
-    // Provide helpful error messages
-    if (message.includes('fetch')) {
-      throw new Error('Could not connect to video service. Please try again.');
-    }
-    if (message.includes('rate')) {
-      throw new Error('Too many requests. Please wait a moment and try again.');
-    }
-    
-    throw new Error(`Failed to fetch video: ${message}`);
+  if (!response.ok) {
+    throw new Error(`API returned ${response.status}`);
   }
+
+  const html = await response.text();
+  
+  // Parse download links from response
+  const downloadMatch = html.match(/href="(https:\/\/[^"]+\.mp4[^"]*)"/);
+  const titleMatch = html.match(/<title>([^<]+)<\/title>/);
+  
+  if (!downloadMatch) {
+    return null;
+  }
+
+  const downloadUrl = downloadMatch[1];
+  const title = titleMatch ? titleMatch[1].replace(' - vevioz', '').trim() : `${platform} Video`;
+
+  return createVideoInfo(url, downloadUrl, title, platform, false);
+}
+
+/**
+ * Fetch using SaveFrom-style approach  
+ */
+async function fetchFromSaveFrom(url: string, platform: string): Promise<YtDlpVideoInfo | null> {
+  // Try ssyoutube API for YouTube
+  if (platform === 'YouTube') {
+    const videoId = extractYouTubeId(url);
+    if (videoId) {
+      // Use YouTube's oEmbed for metadata
+      const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+      
+      try {
+        const oembedRes = await fetch(oembedUrl);
+        if (oembedRes.ok) {
+          const oembed = await oembedRes.json();
+          
+          // For YouTube, we'll return the embed info and let user know
+          // direct downloads require external tools
+          return {
+            id: videoId,
+            title: oembed.title || 'YouTube Video',
+            description: '',
+            thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+            duration: 0,
+            uploader: oembed.author_name || 'YouTube',
+            uploader_id: '',
+            view_count: 0,
+            like_count: 0,
+            upload_date: '',
+            extractor: 'youtube',
+            webpage_url: url,
+            ext: 'mp4',
+            url: `https://www.youtube.com/watch?v=${videoId}`,
+            formats: [
+              {
+                format_id: 'watch',
+                ext: 'mp4',
+                url: `https://www.youtube.com/watch?v=${videoId}`,
+                width: 1920,
+                height: 1080,
+                format_note: 'YouTube Video (use external downloader)',
+              },
+            ],
+            _type: 'video',
+          };
+        }
+      } catch {
+        // Continue to next method
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Extract YouTube video ID from URL
+ */
+function extractYouTubeId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+/**
+ * Create a standardized video info object
+ */
+function createVideoInfo(
+  originalUrl: string,
+  downloadUrl: string,
+  title: string,
+  platform: string,
+  isPhoto: boolean
+): YtDlpVideoInfo {
+  return {
+    id: Buffer.from(originalUrl).toString('base64').substring(0, 11),
+    title: title || `${platform} ${isPhoto ? 'Photo' : 'Video'}`,
+    description: '',
+    thumbnail: '',
+    duration: 0,
+    uploader: platform,
+    uploader_id: '',
+    view_count: 0,
+    like_count: 0,
+    upload_date: new Date().toISOString().split('T')[0].replace(/-/g, ''),
+    webpage_url: originalUrl,
+    extractor: platform.toLowerCase(),
+    ext: isPhoto ? 'jpg' : 'mp4',
+    url: downloadUrl,
+    formats: [
+      {
+        format_id: 'best',
+        ext: isPhoto ? 'jpg' : 'mp4',
+        url: downloadUrl,
+        width: isPhoto ? 1080 : 1920,
+        height: isPhoto ? 1080 : 1080,
+        format_note: isPhoto ? 'Original' : 'HD',
+        vcodec: isPhoto ? 'none' : 'h264',
+        acodec: isPhoto ? 'none' : 'aac',
+      },
+    ],
+    _type: isPhoto ? 'photo' : 'video',
+  };
 }
 
 // ============================================================================

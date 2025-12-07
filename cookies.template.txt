@@ -1,0 +1,46 @@
+# =====================================================================
+# INSTAGRAM COOKIES TEMPLATE - READ THIS!
+# =====================================================================
+# 
+# Your current cookies.txt is MISSING the required session cookies!
+# 
+# Instagram requires these cookies to prove you're logged in:
+#   - sessionid (REQUIRED) - Your login session
+#   - ds_user_id (REQUIRED) - Your user ID
+#
+# You only have tracking cookies (csrftoken, mid, ig_did) which 
+# don't prove you're logged in.
+#
+# HOW TO GET THE CORRECT COOKIES:
+# =====================================================================
+#
+# 1. Install "Get cookies.txt LOCALLY" browser extension:
+#    - Chrome: https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc
+#    - Firefox: https://addons.mozilla.org/en-US/firefox/addon/get-cookies-txt-locally/
+#    - Edge: https://microsoftedge.microsoft.com/addons/detail/get-cookiestxt-locally/helcbdnnimfphmbfnbahdclgddppimhe
+#
+# 2. IMPORTANT: Make sure you are LOGGED INTO INSTAGRAM
+#    - Go to instagram.com
+#    - Log in with your username and password
+#    - Make sure you can see your feed/profile
+#
+# 3. While on instagram.com (AFTER logging in):
+#    - Click the extension icon
+#    - Click "Export" or "Get cookies.txt"
+#    - Save/copy the content
+#
+# 4. Replace the content of cookies.txt with the exported cookies
+#
+# A VALID cookies.txt should look like this (example values):
+# =====================================================================
+# Netscape HTTP Cookie File
+# 
+# .instagram.com	TRUE	/	TRUE	1234567890	sessionid	1234567890%3AABCDEF%3A12
+# .instagram.com	TRUE	/	TRUE	1234567890	ds_user_id	1234567890
+# .instagram.com	TRUE	/	TRUE	1234567890	csrftoken	ABCdefGHI123456789
+# .instagram.com	TRUE	/	TRUE	1234567890	mid	XYZ123abc
+# .instagram.com	TRUE	/	TRUE	1234567890	ig_did	12345678-ABCD-EFGH-1234
+# .instagram.com	TRUE	/	TRUE	1234567890	ig_nrcb	1
+#
+# Notice: sessionid and ds_user_id are present ^^
+# =====================================================================

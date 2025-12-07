@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Vido - Media Downloader
+
+A powerful local media downloader built with Next.js that supports downloading videos and photos from YouTube, Instagram, Twitter, TikTok, and 1000+ other websites.
+
+## Features
+
+- 🎬 **Video Downloads** - SD (480p) and HD (1080p) quality options
+- 📸 **Photo Downloads** - Download images from any supported platform
+- 🌐 **1000+ Sites** - Supports YouTube, Instagram, Twitter, TikTok, Vimeo, and many more
+- 🔐 **Authentication Support** - Automatically uses browser cookies for login-required sites
+- 🎨 **Modern UI** - Beautiful dark theme with responsive design
+
+## Prerequisites
+
+1. **Node.js 18+** - [Download](https://nodejs.org/)
+2. **yt-dlp** - Install with: `pip install yt-dlp`
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+# Install dependencies
+npm install
+
+# Run the development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Instagram, Twitter & Login-Required Sites
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Some sites like Instagram and Twitter require authentication. The app supports two methods:
 
-## Learn More
+### Method 1: Automatic Browser Cookies (Recommended for Firefox)
+1. Log into Instagram/Twitter in **Firefox**
+2. Close Firefox completely
+3. The app will automatically extract your cookies
 
-To learn more about Next.js, take a look at the following resources:
+### Method 2: Manual Cookie Export (If browsers are running)
+1. Install "Get cookies.txt LOCALLY" browser extension:
+   - [Chrome Extension](https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
+   - [Firefox Extension](https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/)
+2. Log into Instagram/Twitter
+3. Click the extension icon while on the site
+4. Export and save as `cookies.txt` in the app folder
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Supported Platforms
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Platform | Videos | Photos | Auth Required |
+|----------|--------|--------|---------------|
+| YouTube | ✅ | ✅ | No |
+| TikTok | ✅ | ✅ | No |
+| Vimeo | ✅ | ❌ | No |
+| Instagram | ✅ | ✅ | **Yes** |
+| Twitter/X | ✅ | ✅ | Some content |
+| Facebook | ✅ | ✅ | Some content |
+| And 1000+ more... |
 
-## Deploy on Vercel
+## Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Next.js 16** - React framework
+- **Tailwind CSS 4** - Styling
+- **yt-dlp** - Media extraction
+- **TypeScript** - Type safety
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+MIT
+

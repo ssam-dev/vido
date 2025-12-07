@@ -1,7 +1,7 @@
 /**
- * Video Download Types
+ * Media Download Types
  * 
- * These TypeScript interfaces define the structure for video download requests
+ * These TypeScript interfaces define the structure for video and photo download requests
  * and responses. Copilot should use these types for type-safe API interactions.
  */
 
@@ -10,16 +10,18 @@
 // ============================================================================
 
 /**
- * VideoFetchRequest - Request body for the /api/fetch-video endpoint
+ * MediaFetchRequest - Request body for the /api/fetch-video endpoint
  * 
- * @property url - The video URL from YouTube, Instagram Reels, or Facebook
- * @property quality - The desired quality: 'sd' for ≤480p, 'hd' for 1080p priority
+ * @property url - The media URL from any supported website
+ * @property quality - The desired quality: 'sd' for ≤480p, 'hd' for 1080p priority (for videos)
+ * @property mediaType - Type of media to download: 'video' or 'photo'
  * 
  * Copilot: Use this interface when validating incoming API requests
  */
 export interface VideoFetchRequest {
   url: string;
   quality: 'sd' | 'hd';
+  mediaType?: 'video' | 'photo' | 'auto'; // auto will detect automatically
 }
 
 // ============================================================================
@@ -46,13 +48,14 @@ export interface VideoFormat {
 }
 
 /**
- * VideoInfo - Metadata about the requested video
+ * VideoInfo - Metadata about the requested media (video or photo)
  * 
- * @property title - Video title
- * @property thumbnail - URL to video thumbnail
- * @property duration - Video duration in seconds
+ * @property title - Media title
+ * @property thumbnail - URL to thumbnail/preview
+ * @property duration - Video duration in seconds (0 for photos)
  * @property uploader - Channel/page name
- * @property platform - Detected platform (youtube, instagram, facebook, twitter, tiktok, vimeo, or other)
+ * @property platform - Detected platform
+ * @property mediaType - Type of media: 'video' or 'photo'
  * 
  * Copilot: Extract this from yt-dlp --dump-json output
  */
@@ -62,6 +65,7 @@ export interface VideoInfo {
   duration: number;
   uploader: string;
   platform: 'youtube' | 'instagram' | 'facebook' | 'twitter' | 'tiktok' | 'vimeo' | 'other' | 'unknown';
+  mediaType: 'video' | 'photo';
 }
 
 /**

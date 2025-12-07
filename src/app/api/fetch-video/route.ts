@@ -1,22 +1,23 @@
 /**
  * /api/fetch-video API Route
  * 
- * This Next.js API route handles video information fetching and download URL
- * generation using yt-dlp. It supports YouTube, Instagram Reels, and Facebook
- * videos with SD (≤480p) and HD (1080p priority) quality options.
+ * This Next.js API route handles video and photo information fetching and download URL
+ * generation using yt-dlp. It supports YouTube, Instagram, Facebook, Twitter, TikTok,
+ * and 1000+ other websites with SD (≤480p) and HD (1080p priority) quality options.
  * 
- * Copilot: This is the main API endpoint for the video downloader.
- * It validates requests, processes videos through yt-dlp, and returns
- * download URLs with video metadata.
+ * Copilot: This is the main API endpoint for the media downloader.
+ * It validates requests, processes media through yt-dlp, and returns
+ * download URLs with metadata.
  * 
  * ENDPOINT: POST /api/fetch-video
- * BODY: { url: string, quality: 'sd' | 'hd' }
+ * BODY: { url: string, quality: 'sd' | 'hd', mediaType?: 'video' | 'photo' | 'auto' }
  * 
  * Best Practices:
  * - Validates input before processing
  * - Returns structured error responses
  * - Handles yt-dlp errors gracefully
  * - Uses TypeScript for type safety
+ * - Supports both video and photo downloads
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -29,10 +30,11 @@ import {
   validateVideoUrl,
   fetchVideoInfo,
   selectFormat,
+  selectPhotoFormat,
   toVideoInfo,
   toVideoFormat,
   getDownloadUrl,
-} from '@/lib/ytdlp';
+} from '@/services/ytdlp';
 
 // ============================================================================
 // API CONFIGURATION
@@ -162,28 +164,56 @@ export async function POST(request: NextRequest): Promise<NextResponse<VideoFetc
     }
 
     // ========================================================================
-    // STEP 5: Select Format Based on Quality Preference
+    // STEP 5: Select Format Based on Quality Preference and Media Type
     // ========================================================================
 
     // Copilot: Use quality mapping logic to select SD (≤480p) or HD (1080p priority)
+    // For photos, select the best image format available
     if (!videoInfo.formats || videoInfo.formats.length === 0) {
+      // Copilot: If no formats but we have a direct URL (common for images), use it
+      if (videoInfo.url) {
+        const info = toVideoInfo(videoInfo, validation.platform);
+        const response: VideoFetchResponse = {
+          success: true,
+          info,
+          downloadUrl: videoInfo.url,
+          selectedFormat: {
+            formatId: 'direct',
+            ext: info.mediaType === 'photo' ? 'jpg' : 'mp4',
+            resolution: 'Original',
+            filesize: null,
+            quality: 'Original',
+          },
+        };
+        return NextResponse.json(response);
+      }
+
       return NextResponse.json(
         {
           success: false,
-          error: 'No formats available for this video',
+          error: 'No formats available for this media',
           code: 'QUALITY_NOT_FOUND',
         } as VideoFetchError,
         { status: 404 }
       );
     }
 
-    const selectedFormat = selectFormat(videoInfo.formats, quality);
+    // Copilot: Check if this is a photo based on available formats
+    const info = toVideoInfo(videoInfo, validation.platform);
+    const isPhoto = info.mediaType === 'photo';
+
+    // Select format based on media type
+    const selectedFormat = isPhoto 
+      ? selectPhotoFormat(videoInfo.formats)
+      : selectFormat(videoInfo.formats, quality);
     
     if (!selectedFormat) {
       return NextResponse.json(
         {
           success: false,
-          error: `No ${quality.toUpperCase()} quality format available for this video`,
+          error: isPhoto 
+            ? 'No image format available for this photo'
+            : `No ${quality.toUpperCase()} quality format available for this video`,
           code: 'QUALITY_NOT_FOUND',
         } as VideoFetchError,
         { status: 404 }
@@ -223,7 +253,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<VideoFetc
     // Copilot: Build and return structured success response
     const response: VideoFetchResponse = {
       success: true,
-      info: toVideoInfo(videoInfo, validation.platform),
+      info,
       downloadUrl,
       selectedFormat: toVideoFormat(selectedFormat),
     };

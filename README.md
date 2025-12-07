@@ -63,6 +63,37 @@ Some sites like Instagram and Twitter require authentication. The app supports t
 - **yt-dlp** - Media extraction
 - **TypeScript** - Type safety
 
+## Deployment
+
+### ⚠️ Important Note
+This app requires **yt-dlp** (a Python binary) to run. It **cannot be deployed to Vercel** because Vercel's serverless functions don't support system binaries.
+
+### Recommended: Deploy to Railway
+
+1. Create a [Railway](https://railway.app/) account
+2. Click "New Project" → "Deploy from GitHub repo"
+3. Select your `vido` repository
+4. Railway will auto-detect the Dockerfile and deploy
+5. Add environment variable if needed: `NODE_ENV=production`
+6. Your app will be live at `https://your-app.railway.app`
+
+### Alternative: Deploy to Render
+
+1. Create a [Render](https://render.com/) account
+2. New → Web Service → Connect your GitHub repo
+3. Select "Docker" as the environment
+4. Deploy!
+
+### Self-Host with Docker
+
+```bash
+# Build the image
+docker build -t vido .
+
+# Run the container
+docker run -p 3000:3000 vido
+```
+
 ## License
 
 MIT

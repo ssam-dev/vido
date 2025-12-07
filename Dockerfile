@@ -47,22 +47,22 @@ RUN npm prune --production
 # 🚀 Runtime Configuration
 # ============================================
 
-# EXPOSE: Documents the primary network port (3000) that the Next.js application is configured to listen on 
-# inside the isolated container environment. 
-# IMPORTANT: This instruction is for documentation only and does not automatically map the port to the host system.
-# Port mapping must be handled externally (e.g., via 'docker run -p' or the cloud deployment platform's settings).
+# EXPOSE: Declares the network port (3000) on which the Next.js application listens inside the container.
+# Purpose: This acts purely as documentation and metadata.
+# Configuration Note: This instruction DOES NOT publish the port. External port mapping (e.g., 'docker run -p' or
+# cloud deployment settings) is required to make the application accessible from the host system.
 EXPOSE 3000
 
-# ENV: Sets critical environment variables necessary for the application's runtime.
-# NODE_ENV=production: Triggers performance optimizations, minimizes output, and enables production caching 
-# within the Next.js framework.
-# HOSTNAME="0.0.0.0": Instructs the Node.js server to bind to all available network interfaces within the 
-# container. This is crucial for accessibility, as containers don't use 'localhost' (127.0.0.1) reliably.
+# ENV: Defines critical environment variables for the application's operating environment.
+# 1. NODE_ENV=production: Activates Next.js performance optimizations, production caching, and minimizes unnecessary logging.
+# 2. HOSTNAME="0.0.0.0": Crucial for container accessibility. Instructs the Node.js process to bind to all available 
+#    network interfaces within the container, ensuring it is reachable by the Docker engine and host system.
 ENV NODE_ENV=production
 ENV HOSTNAME="0.0.0.0"
 
-# CMD: Specifies the command that executes when the container starts.
-# We use the shell form (CMD ["sh", "-c", "..."]) to guarantee shell-level variable substitution.
-# This enables dynamic port assignment: the server uses the $PORT environment variable provided by the 
-# hosting platform (e.g., Railway, Render) and falls back to port 3000 if $PORT is undefined (${PORT:-3000}).
+# CMD: Specifies the primary process that executes when a container instance is launched.
+# Execution Form: Uses the shell form (CMD ["sh", "-c", "..."]) to enable essential shell features.
+# Functionality: Runs the Next.js production server and passes the dynamic port argument.
+# Dynamic Port Logic: ${PORT:-3000} ensures the application listens on the host's assigned $PORT variable (common
+# in PaaS environments like Railway/Render) or safely defaults to 3000 if $PORT is not defined.
 CMD ["sh", "-c", "node node_modules/next/dist/bin/next start -H 0.0.0.0 -p ${PORT:-3000}"]

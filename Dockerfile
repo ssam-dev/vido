@@ -5,11 +5,17 @@ FROM node:20-slim
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
+    python3-venv \
     ffmpeg \
+    curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install yt-dlp and gallery-dl
+# Install yt-dlp and gallery-dl globally
 RUN pip3 install --break-system-packages yt-dlp gallery-dl
+
+# Verify yt-dlp installation
+RUN yt-dlp --version && gallery-dl --version
 
 # Set working directory
 WORKDIR /app
@@ -29,12 +35,12 @@ RUN npm run build
 # Remove devDependencies after build to reduce image size
 RUN npm prune --production
 
-# Expose port
+# Expose port (Render uses PORT env variable)
 EXPOSE 3000
 
 # Set environment variables
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
-# Start the app
+# Start the app - Next.js will use PORT env variable from Render
 CMD ["npm", "start"]

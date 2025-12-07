@@ -427,6 +427,7 @@ export async function fetchVideoInfo(url: string): Promise<YtDlpVideoInfo> {
   try {
     // Copilot: Find the yt-dlp executable (handles Windows PATH issues)
     const ytdlp = await findYtDlpExecutable();
+    console.log(`[fetchVideoInfo] Using yt-dlp: ${ytdlp}`);
     
     // Copilot: Get browser cookies argument for auth-required sites
     const cookiesArg = await getCookiesArg(url);
@@ -439,12 +440,14 @@ export async function fetchVideoInfo(url: string): Promise<YtDlpVideoInfo> {
     // --retries: Retry on connection failures
     // --cookies-from-browser: Extract cookies from browser for auth (if needed)
     const command = `${ytdlp} --dump-json --no-warnings --no-playlist --socket-timeout 60 --retries 3 ${cookiesArg} "${url}"`;
+    console.log(`[fetchVideoInfo] Running command: ${command.substring(0, 100)}...`);
     
     const { stdout, stderr } = await execAsync(command, {
       // Copilot: Set timeout to prevent hanging on slow responses (2 minutes for slow sites)
       timeout: 120000, // 120 second timeout
       maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large JSON responses
     });
+    console.log(`[fetchVideoInfo] yt-dlp completed, stdout length: ${stdout?.length || 0}, stderr: ${stderr?.substring(0, 100) || 'none'}`);
 
     // Copilot: Check if stdout is empty (no JSON output)
     if (!stdout || stdout.trim() === '') {
@@ -472,6 +475,7 @@ export async function fetchVideoInfo(url: string): Promise<YtDlpVideoInfo> {
     return videoInfo;
   } catch (error) {
     ytdlpError = error instanceof Error ? error : new Error(String(error));
+    console.error(`[fetchVideoInfo] yt-dlp error: ${ytdlpError.message}`);
     
     // Copilot: For Instagram, try gallery-dl as fallback before giving up
     // Instagram actively blocks yt-dlp, but gallery-dl often works

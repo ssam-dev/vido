@@ -1,11 +1,10 @@
-# Use Node.js base image
+# Use Node.js with Python for yt-dlp
 FROM node:20-slim
 
-# Install Python, pip, and ffmpeg for yt-dlp
+# Install Python and yt-dlp dependencies
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
-    python3-venv \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
@@ -19,16 +18,20 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm ci --only=production
 
-# Copy the rest of the application
+# Copy source code
 COPY . .
 
-# Build the Next.js application
+# Build the Next.js app
 RUN npm run build
 
 # Expose port
 EXPOSE 3000
 
-# Start the application
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Start the app
 CMD ["npm", "start"]

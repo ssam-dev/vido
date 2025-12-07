@@ -114,15 +114,19 @@ const SD_MAX_HEIGHT = 480;
 const HD_TARGET_HEIGHT = 1080;
 
 /**
- * SUPPORTED_PLATFORMS - Regex patterns for supported video platforms
+ * SUPPORTED_PLATFORMS - Regex patterns for known video platforms
  * 
- * Copilot: Add new platform patterns here to extend support.
- * Each pattern should match the full URL structure.
+ * Copilot: These patterns help identify the platform for display purposes.
+ * yt-dlp supports 1000+ websites, so we allow any valid URL.
+ * Known platforms get specific icons/labels in the UI.
  */
-const SUPPORTED_PLATFORMS = {
+const KNOWN_PLATFORMS = {
   youtube: /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)/i,
   instagram: /^(https?:\/\/)?(www\.)?instagram\.com\/(reel|reels|p)\//i,
   facebook: /^(https?:\/\/)?(www\.|m\.|web\.)?facebook\.com\/.*(videos?|watch|reel)/i,
+  twitter: /^(https?:\/\/)?(www\.)?(twitter\.com|x\.com)\/.*\/status\//i,
+  tiktok: /^(https?:\/\/)?(www\.|vm\.)?tiktok\.com\//i,
+  vimeo: /^(https?:\/\/)?(www\.)?vimeo\.com\//i,
 } as const;
 
 // ============================================================================
@@ -130,17 +134,51 @@ const SUPPORTED_PLATFORMS = {
 // ============================================================================
 
 /**
- * Validates if a URL is from a supported platform
+ * Detects the platform from a URL
+ * 
+ * @param url - The URL to check
+ * @returns The detected platform name
+ * 
+ * Copilot: Returns 'other' for valid URLs from unknown platforms.
+ * yt-dlp will attempt to process any URL.
+ */
+export function detectPlatform(url: string): 'youtube' | 'instagram' | 'facebook' | 'twitter' | 'tiktok' | 'vimeo' | 'other' | 'unknown' {
+  if (!url || typeof url !== 'string') {
+    return 'unknown';
+  }
+
+  const trimmedUrl = url.trim();
+
+  // Check against known platform patterns
+  for (const [platform, pattern] of Object.entries(KNOWN_PLATFORMS)) {
+    if (pattern.test(trimmedUrl)) {
+      return platform as 'youtube' | 'instagram' | 'facebook' | 'twitter' | 'tiktok' | 'vimeo';
+    }
+  }
+
+  // If it's a valid URL but unknown platform, return 'other'
+  if (trimmedUrl.match(/^https?:\/\//i)) {
+    return 'other';
+  }
+
+  return 'unknown';
+}
+
+/**
+ * Validates if a URL can be processed
  * 
  * @param url - The URL to validate
  * @returns Object with validation result and detected platform
  * 
- * Copilot: Call this before processing any video URL to ensure
- * the platform is supported and the URL format is valid.
+ * Copilot: Now accepts ANY valid http/https URL.
+ * yt-dlp supports 1000+ websites including:
+ * - YouTube, Instagram, Facebook, Twitter/X, TikTok, Vimeo
+ * - Reddit, Twitch, Dailymotion, Bilibili
+ * - News sites, adult sites, and many more
  */
 export function validateVideoUrl(url: string): {
   isValid: boolean;
-  platform: 'youtube' | 'instagram' | 'facebook' | 'unknown';
+  platform: 'youtube' | 'instagram' | 'facebook' | 'twitter' | 'tiktok' | 'vimeo' | 'other' | 'unknown';
   error?: string;
 } {
   // Copilot: Basic URL format validation
@@ -155,20 +193,13 @@ export function validateVideoUrl(url: string): {
     return { isValid: false, platform: 'unknown', error: 'URL must start with http:// or https://' };
   }
 
-  // Copilot: Check against each supported platform pattern
-  for (const [platform, pattern] of Object.entries(SUPPORTED_PLATFORMS)) {
-    if (pattern.test(trimmedUrl)) {
-      return {
-        isValid: true,
-        platform: platform as 'youtube' | 'instagram' | 'facebook',
-      };
-    }
-  }
+  // Copilot: Detect the platform for display purposes
+  const platform = detectPlatform(trimmedUrl);
 
+  // Accept any valid URL - yt-dlp will try to process it
   return {
-    isValid: false,
-    platform: 'unknown',
-    error: 'URL must be from YouTube, Instagram Reels, or Facebook',
+    isValid: true,
+    platform,
   };
 }
 
@@ -366,7 +397,7 @@ function getQualityLabel(height: number): string {
  */
 export function toVideoInfo(
   info: YtDlpVideoInfo,
-  platform: 'youtube' | 'instagram' | 'facebook' | 'unknown'
+  platform: 'youtube' | 'instagram' | 'facebook' | 'twitter' | 'tiktok' | 'vimeo' | 'other' | 'unknown'
 ): VideoInfo {
   // Copilot: Get best thumbnail - prefer higher resolution
   const thumbnail = info.thumbnail || 

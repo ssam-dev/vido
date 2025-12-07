@@ -52,7 +52,7 @@ export interface VideoFormat {
  * @property thumbnail - URL to video thumbnail
  * @property duration - Video duration in seconds
  * @property uploader - Channel/page name
- * @property platform - Detected platform (youtube, instagram, facebook)
+ * @property platform - Detected platform (youtube, instagram, facebook, twitter, tiktok, vimeo, or other)
  * 
  * Copilot: Extract this from yt-dlp --dump-json output
  */
@@ -61,7 +61,7 @@ export interface VideoInfo {
   thumbnail: string;
   duration: number;
   uploader: string;
-  platform: 'youtube' | 'instagram' | 'facebook' | 'unknown';
+  platform: 'youtube' | 'instagram' | 'facebook' | 'twitter' | 'tiktok' | 'vimeo' | 'other' | 'unknown';
 }
 
 /**

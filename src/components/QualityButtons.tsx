@@ -1,15 +1,15 @@
 /**
  * Quality Buttons Component
  * 
- * SD, HD, and Photo download buttons
+ * SD and HD download buttons
  */
 
 import LoadingSpinner from './LoadingSpinner';
 
 interface QualityButtonsProps {
-  fetchingQuality: 'sd' | 'hd' | 'photo' | null;
+  fetchingQuality: 'sd' | 'hd' | null;
   isLoading: boolean;
-  onFetch: (quality: 'sd' | 'hd' | 'photo') => void;
+  onFetch: (quality: 'sd' | 'hd') => void;
 }
 
 export default function QualityButtons({ fetchingQuality, isLoading, onFetch }: QualityButtonsProps) {
@@ -65,36 +65,11 @@ export default function QualityButtons({ fetchingQuality, isLoading, onFetch }: 
             </>
           )}
         </button>
-
-        {/* Photo Download Button */}
-        <button
-          type="button"
-          onClick={() => onFetch('photo')}
-          disabled={isLoading}
-          className="px-6 py-3 sm:py-4 rounded-xl font-semibold text-white
-                     bg-green-600 hover:bg-green-700 disabled:bg-green-800 
-                     disabled:cursor-not-allowed transition-all duration-200
-                     flex items-center justify-center gap-2 min-w-[160px]"
-        >
-          {fetchingQuality === 'photo' ? (
-            <>
-              <LoadingSpinner />
-              <span>Fetching...</span>
-            </>
-          ) : (
-            <>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span>Photo</span>
-            </>
-          )}
-        </button>
       </div>
 
       {/* Quality description */}
       <p className="text-center text-gray-400 text-sm mt-4">
-        SD: Standard Definition (up to 480p) • HD: High Definition (1080p) • Photo: Images & Thumbnails
+        SD: Standard Definition (up to 480p) • HD: High Definition (1080p)
       </p>
     </div>
   );

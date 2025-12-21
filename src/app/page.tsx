@@ -1,11 +1,10 @@
 /**
- * Media Downloader - Main Page Component
+ * Video Downloader - Main Page Component
  * 
- * This is the main UI for the media downloader application. It provides:
+ * This is the main UI for the video downloader application. It provides:
  * - A responsive single URL input form
- * - SD (≤480p) and HD (1080p) download options for videos
- * - Photo download support for images
- * - Media preview with metadata display
+ * - SD (≤480p) and HD (1080p) download options
+ * - Video preview with metadata display
  * - Error handling and loading states
  */
 
@@ -49,13 +48,13 @@ export default function Home() {
     data: null,
     error: null,
   });
-  const [fetchingQuality, setFetchingQuality] = useState<'sd' | 'hd' | 'photo' | null>(null);
+  const [fetchingQuality, setFetchingQuality] = useState<'sd' | 'hd' | null>(null);
 
   // ========================================================================
   // API HANDLERS
   // ========================================================================
 
-  const fetchVideo = async (quality: 'sd' | 'hd' | 'photo') => {
+  const fetchVideo = async (quality: 'sd' | 'hd') => {
     if (!url.trim()) {
       setVideoState({
         status: 'error',
@@ -80,8 +79,7 @@ export default function Home() {
         },
         body: JSON.stringify({ 
           url: url.trim(), 
-          quality: quality === 'photo' ? 'hd' : quality,
-          mediaType: quality === 'photo' ? 'photo' : 'video'
+          quality
         }),
       });
 

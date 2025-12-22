@@ -630,96 +630,336 @@ async function fetchTwitterInternal(url: string): Promise<YtDlpVideoInfo | null>
 }
 
 // ============================================================================
-// FACEBOOK - Using Mobile API
+// FACEBOOK - Using Multiple Methods
 // ============================================================================
 
 async function fetchFacebookInternal(url: string): Promise<YtDlpVideoInfo | null> {
-  // Try to get video from mobile site (less restrictions)
-  const mobileUrl = url.replace('www.facebook.com', 'm.facebook.com');
+  // Normalize URL
+  let videoUrl = url;
   
-  const response = await fetch(mobileUrl, {
+  // Handle fb.watch short URLs
+  if (url.includes('fb.watch')) {
+    try {
+      const response = await fetch(url, {
+        method: 'HEAD',
+        redirect: 'follow',
+        headers: { 'User-Agent': MOBILE_USER_AGENT },
+      });
+      videoUrl = response.url;
+    } catch {
+      // Continue with original URL
+    }
+  }
+
+  // Try Method 1: Third-party API (most reliable for Facebook)
+  try {
+    const result = await fetchFacebookFromAPI(videoUrl);
+    if (result) return result;
+  } catch {
+    // Continue to next method
+  }
+
+  // Try Method 2: Facebook's oEmbed API (works for public videos)
+  try {
+    const result = await fetchFacebookOEmbed(videoUrl);
+    if (result) return result;
+  } catch {
+    // Continue to next method
+  }
+
+  // Try Method 3: Mobile site scraping
+  try {
+    const result = await fetchFacebookMobile(videoUrl);
+    if (result) return result;
+  } catch {
+    // Continue to next method
+  }
+
+  // Try Method 4: Direct page scraping with different patterns
+  try {
+    const result = await fetchFacebookDirect(videoUrl);
+    if (result) return result;
+  } catch {
+    // Continue
+  }
+
+  throw new Error('Facebook fetch failed');
+}
+
+// Third-party API for Facebook (similar to TikWM for TikTok)
+async function fetchFacebookFromAPI(url: string): Promise<YtDlpVideoInfo | null> {
+  // Use getfvid.com API (free, no auth)
+  const apiUrl = `https://www.getfvid.com/downloader`;
+  
+  const formData = new URLSearchParams();
+  formData.append('url', url);
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
     headers: {
-      'User-Agent': MOBILE_USER_AGENT,
+      'User-Agent': USER_AGENT,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Accept': 'text/html',
+      'Origin': 'https://www.getfvid.com',
+      'Referer': 'https://www.getfvid.com/',
+    },
+    body: formData.toString(),
+  });
+
+  if (!response.ok) return null;
+
+  const html = await response.text();
+
+  // Extract HD download link
+  const hdMatch = html.match(/href="([^"]+)"[^>]*>.*?Download.*?HD/i) ||
+                  html.match(/class="btn[^"]*"[^>]*href="([^"]+)"[^>]*>.*?HD/i);
+  
+  // Extract SD download link
+  const sdMatch = html.match(/href="([^"]+)"[^>]*>.*?Download.*?SD/i) ||
+                  html.match(/class="btn[^"]*"[^>]*href="([^"]+)"[^>]*>.*?Normal/i);
+
+  // Extract any video download link
+  const anyMatch = html.match(/href="(https:\/\/[^"]*fbcdn[^"]*\.mp4[^"]*)"/i) ||
+                   html.match(/href="(https:\/\/video[^"]*\.mp4[^"]*)"/i);
+
+  const downloadUrl = hdMatch?.[1] || sdMatch?.[1] || anyMatch?.[1];
+
+  if (downloadUrl && downloadUrl.startsWith('http')) {
+    // Extract title
+    const titleMatch = html.match(/<h5[^>]*>([^<]+)<\/h5>/) ||
+                       html.match(/<title>([^<]+)<\/title>/);
+    const title = titleMatch ? titleMatch[1].replace(/Download.*?-/i, '').trim() : 'Facebook Video';
+    
+    return createVideoInfo(url, downloadUrl, title, 'Facebook', false);
+  }
+
+  // Try alternative: fdown.net
+  return await fetchFacebookFromFDown(url);
+}
+
+async function fetchFacebookFromFDown(url: string): Promise<YtDlpVideoInfo | null> {
+  const apiUrl = 'https://www.fdown.net/download.php';
+  
+  const formData = new URLSearchParams();
+  formData.append('URLz', url);
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'User-Agent': USER_AGENT,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Accept': '*/*',
+      'Origin': 'https://www.fdown.net',
+      'Referer': 'https://www.fdown.net/',
+    },
+    body: formData.toString(),
+  });
+
+  if (!response.ok) return null;
+
+  const html = await response.text();
+
+  // Look for download links
+  const hdMatch = html.match(/id="hdlink"[^>]*href="([^"]+)"/i) ||
+                  html.match(/quality.*?HD.*?href="([^"]+)"/i);
+  const sdMatch = html.match(/id="sdlink"[^>]*href="([^"]+)"/i) ||
+                  html.match(/quality.*?SD.*?href="([^"]+)"/i);
+  
+  const downloadUrl = hdMatch?.[1] || sdMatch?.[1];
+
+  if (downloadUrl && downloadUrl.startsWith('http')) {
+    return createVideoInfo(url, downloadUrl, 'Facebook Video', 'Facebook', false);
+  }
+
+  return null;
+}
+
+async function fetchFacebookOEmbed(url: string): Promise<YtDlpVideoInfo | null> {
+  // Facebook oEmbed endpoint (works for public videos)
+  const oembedUrl = `https://www.facebook.com/plugins/video/oembed.json/?url=${encodeURIComponent(url)}`;
+  
+  const response = await fetch(oembedUrl, {
+    headers: {
+      'User-Agent': USER_AGENT,
+      'Accept': 'application/json',
+    },
+  });
+
+  if (!response.ok) return null;
+
+  const data = await response.json();
+  
+  // oEmbed doesn't give direct video URL, but we can extract from HTML
+  if (data.html) {
+    const srcMatch = data.html.match(/src="([^"]+)"/);
+    if (srcMatch) {
+      // This is an iframe URL, need to fetch that page
+      const iframeUrl = srcMatch[1].replace(/&amp;/g, '&');
+      return await fetchFacebookFromEmbed(iframeUrl, url, data.title || 'Facebook Video');
+    }
+  }
+
+  return null;
+}
+
+async function fetchFacebookFromEmbed(embedUrl: string, originalUrl: string, title: string): Promise<YtDlpVideoInfo | null> {
+  const response = await fetch(embedUrl, {
+    headers: {
+      'User-Agent': USER_AGENT,
       'Accept': 'text/html',
     },
   });
 
-  if (!response.ok) {
-    throw new Error('Facebook fetch failed');
-  }
+  if (!response.ok) return null;
 
   const html = await response.text();
+  
+  // Look for video URLs in the embed page
+  const patterns = [
+    /"hd_src":"([^"]+)"/,
+    /"sd_src":"([^"]+)"/,
+    /"playable_url_quality_hd":"([^"]+)"/,
+    /"playable_url":"([^"]+)"/,
+    /data-video-url="([^"]+)"/,
+    /videoURL\\?":\\?"([^"\\]+)"/,
+  ];
 
-  // Try to find video URL in various formats
-  // HD URL
-  let videoUrl = '';
-  const hdMatch = html.match(/"hd_src":"([^"]+)"/);
-  if (hdMatch) {
-    videoUrl = hdMatch[1].replace(/\\/g, '');
-  }
-
-  // SD URL fallback
-  if (!videoUrl) {
-    const sdMatch = html.match(/"sd_src":"([^"]+)"/);
-    if (sdMatch) {
-      videoUrl = sdMatch[1].replace(/\\/g, '');
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match) {
+      let videoUrl = match[1]
+        .replace(/\\/g, '')
+        .replace(/\\u0025/g, '%')
+        .replace(/\\u0026/g, '&');
+      videoUrl = decodeURIComponent(videoUrl);
+      
+      if (videoUrl.startsWith('http')) {
+        return createVideoInfo(originalUrl, videoUrl, title, 'Facebook', false);
+      }
     }
   }
 
-  // Another pattern
-  if (!videoUrl) {
-    const playableMatch = html.match(/"playable_url":"([^"]+)"/);
-    if (playableMatch) {
-      videoUrl = playableMatch[1].replace(/\\/g, '');
+  return null;
+}
+
+async function fetchFacebookMobile(url: string): Promise<YtDlpVideoInfo | null> {
+  // Use mobile site (mbasic for even simpler HTML)
+  const mobileUrl = url
+    .replace('www.facebook.com', 'mbasic.facebook.com')
+    .replace('m.facebook.com', 'mbasic.facebook.com')
+    .replace('web.facebook.com', 'mbasic.facebook.com');
+  
+  const response = await fetch(mobileUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 4.4.2; Nexus 5 Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.76 Mobile Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
+  });
+
+  if (!response.ok) return null;
+
+  const html = await response.text();
+  
+  // mbasic Facebook has simpler HTML structure
+  // Look for video redirect URL
+  const videoRedirectMatch = html.match(/href="(\/video_redirect\/\?src=[^"]+)"/);
+  if (videoRedirectMatch) {
+    let videoPath = videoRedirectMatch[1].replace(/&amp;/g, '&');
+    // Extract the actual video URL from the redirect
+    const srcMatch = videoPath.match(/src=([^&]+)/);
+    if (srcMatch) {
+      const videoUrl = decodeURIComponent(srcMatch[1]);
+      const titleMatch = html.match(/<title>([^<]+)<\/title>/);
+      const title = titleMatch ? titleMatch[1].replace(' | Facebook', '') : 'Facebook Video';
+      return createVideoInfo(url, videoUrl, title, 'Facebook', false);
+    }
+  }
+
+  // Try to find direct video URL
+  const patterns = [
+    /href="([^"]*\.mp4[^"]*)"/,
+    /src="([^"]*\.mp4[^"]*)"/,
+    /"video_url":"([^"]+)"/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match) {
+      let videoUrl = match[1].replace(/&amp;/g, '&');
+      if (!videoUrl.startsWith('http')) {
+        videoUrl = 'https://www.facebook.com' + videoUrl;
+      }
+      videoUrl = decodeURIComponent(videoUrl);
+      
+      const titleMatch = html.match(/<title>([^<]+)<\/title>/);
+      const title = titleMatch ? titleMatch[1].replace(' | Facebook', '') : 'Facebook Video';
+      return createVideoInfo(url, videoUrl, title, 'Facebook', false);
+    }
+  }
+
+  return null;
+}
+
+async function fetchFacebookDirect(url: string): Promise<YtDlpVideoInfo | null> {
+  // Try regular Facebook page with desktop user agent
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': USER_AGENT,
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.5',
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate',
+    },
+  });
+
+  if (!response.ok) return null;
+
+  const html = await response.text();
+
+  // Facebook embeds video data in JSON within the HTML
+  // Try various patterns
+  const patterns = [
+    /"playable_url_quality_hd":"([^"]+)"/,
+    /"playable_url":"([^"]+)"/,
+    /"hd_src":"([^"]+)"/,
+    /"sd_src":"([^"]+)"/,
+    /"browser_native_hd_url":"([^"]+)"/,
+    /"browser_native_sd_url":"([^"]+)"/,
+    /\["hd_src"\]="([^"]+)"/,
+    /\["sd_src"\]="([^"]+)"/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match) {
+      let videoUrl = match[1]
+        .replace(/\\/g, '')
+        .replace(/\\u0025/g, '%')
+        .replace(/\\u0026/g, '&')
+        .replace(/\\u003C/g, '<')
+        .replace(/\\u003E/g, '>');
+      
+      videoUrl = decodeURIComponent(videoUrl);
+      
+      if (videoUrl.startsWith('http') && (videoUrl.includes('.mp4') || videoUrl.includes('video'))) {
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/);
+        const title = titleMatch ? titleMatch[1].replace(' | Facebook', '').replace(' - Facebook', '') : 'Facebook Video';
+        return createVideoInfo(url, videoUrl, title, 'Facebook', false);
+      }
     }
   }
 
   // Try og:video meta tag
-  if (!videoUrl) {
-    const ogMatch = html.match(/<meta property="og:video" content="([^"]+)"/);
-    if (ogMatch) {
-      videoUrl = ogMatch[1];
-    }
+  const ogMatch = html.match(/<meta property="og:video(?::url)?" content="([^"]+)"/);
+  if (ogMatch) {
+    let videoUrl = ogMatch[1].replace(/&amp;/g, '&');
+    const titleMatch = html.match(/<meta property="og:title" content="([^"]+)"/);
+    const title = titleMatch ? titleMatch[1] : 'Facebook Video';
+    return createVideoInfo(url, videoUrl, title, 'Facebook', false);
   }
 
-  if (!videoUrl) {
-    throw new Error('Could not find video URL on Facebook');
-  }
-
-  // Decode URL
-  videoUrl = decodeURIComponent(videoUrl.replace(/&amp;/g, '&'));
-
-  // Extract title
-  const titleMatch = html.match(/<title>([^<]+)<\/title>/);
-  const title = titleMatch ? titleMatch[1].replace(' | Facebook', '') : 'Facebook Video';
-
-  return {
-    id: url.match(/\/videos\/(\d+)/)?.toString() || 'facebook',
-    title,
-    description: '',
-    thumbnail: '',
-    duration: 0,
-    uploader: 'Facebook',
-    uploader_id: '',
-    view_count: 0,
-    like_count: 0,
-    upload_date: '',
-    extractor: 'facebook',
-    webpage_url: url,
-    ext: 'mp4',
-    url: videoUrl,
-    formats: [
-      {
-        format_id: 'best',
-        ext: 'mp4',
-        url: videoUrl,
-        width: 1280,
-        height: 720,
-        format_note: 'HD',
-      },
-    ],
-    _type: 'video',
-  };
+  return null;
 }
 
 // ============================================================================
